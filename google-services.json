@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "183422632328",
+    "project_id": "amuser-21773",
+    "storage_bucket": "amuser-21773.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:183422632328:android:523ef52e1eca5d3c76fa3d",
+        "android_client_info": {
+          "package_name": "com.gabdeez.AmuseR"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD--wR3wWH7idaWI60l5GofBKWciyitzGM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
