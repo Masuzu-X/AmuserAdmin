@@ -5,13 +5,14 @@ import {
   collection,
   onSnapshot,
   setDoc,
-  deleteDoc,
+  updateDoc,
   doc,
   serverTimestamp,
   query,
   orderBy,
 } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { Ionicons } from '@expo/vector-icons';
 
 // ── Firebase config ──────────────────────────────────────────────
 const firebaseConfig = {
@@ -29,11 +30,26 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+// ── Constants ────────────────────────────────────────────────────
+const PAGE_SIZE = 10; // ✅ Define PAGE_SIZE constant
+
 // ── Helpers ──────────────────────────────────────────────────────
 function formatDate(val) {
   if (!val) return '—';
   const d = val?.toDate ? val.toDate() : new Date(val);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateTime(val) {
+  if (!val) return '—';
+  const d = val?.toDate ? val.toDate() : new Date(val);
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function shortUID(uid = '') {
@@ -46,7 +62,7 @@ export default function ManageUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [archiveTarget, setArchiveTarget] = useState(null);
   const [toast, setToast] = useState(null);
 
   // Add form state
@@ -54,7 +70,11 @@ export default function ManageUsers() {
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [adding, setAdding] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+
+  // Pagination
+  const [pageSize, setPageSize] = useState(PAGE_SIZE); // ✅ Use PAGE_SIZE constant
+  const [currentPage, setCurrentPage] = useState(1);
 
   // ── Realtime listener ──────────────────────────────────────────
   useEffect(() => {
@@ -62,7 +82,12 @@ export default function ManageUsers() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        // Hide archived users by default
+        const activeOnly = all.filter((u) => !u.archived);
+
+        setUsers(activeOnly);
         setLoading(false);
       },
       (err) => {
@@ -72,6 +97,7 @@ export default function ManageUsers() {
       },
     );
     return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Toast ──────────────────────────────────────────────────────
@@ -80,62 +106,91 @@ export default function ManageUsers() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── Add user (Firestore only) ──────────────────────────────────
+  // ── Add user (Auth + Firestore) ────────────────────────────────
   const handleAddUser = async () => {
     if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) return;
 
     setAdding(true);
-
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        newEmail.trim(),
-        newPassword.trim()
-      );
+      const userCredential = await createUserWithEmailAndPassword(auth, newEmail.trim(), newPassword.trim());
 
-      await setDoc(doc(db, "users", userCredential.user.uid), {
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
         fullName: newName.trim(),
         email: newEmail.trim(),
+        emailVerified: false,
+        archived: false,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
-      showToast("User created successfully");
+      showToast('User created successfully');
       setShowAddModal(false);
+
+      // reset form
+      setNewName('');
+      setNewEmail('');
+      setNewPassword('');
     } catch (e) {
-      showToast(e.message, "error");
+      showToast(e.message, 'error');
     } finally {
       setAdding(false);
     }
   };
 
-  // ── Delete user (Firestore doc) ────────────────────────────────
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true);
+  // ── Archive user (Firestore only) ───────────────────────────────
+  const handleArchive = async () => {
+    if (!archiveTarget) return;
+    setArchiving(true);
+
     try {
-      await deleteDoc(doc(db, 'users', deleteTarget.id));
-      showToast('Account deleted');
-      setDeleteTarget(null);
+      await updateDoc(doc(db, 'users', archiveTarget.id), {
+        archived: true,
+        archivedAt: serverTimestamp(),
+      });
+
+      showToast('User archived');
+      setArchiveTarget(null);
     } catch (e) {
-      showToast('Failed to delete: ' + e.message, 'error');
+      showToast('Failed to archive: ' + e.message, 'error');
     } finally {
-      setDeleting(false);
+      setArchiving(false);
     }
   };
 
   // ── Filtered list ──────────────────────────────────────────────
-  const filtered = users.filter(
-    (u) =>
-      (u.email || '').toLowerCase().includes(search.toLowerCase()) ||
-      (u.displayName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (u.uid || '').toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = users.filter((u) => {
+    const s = search.toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const name = (u.fullName || u.displayName || '').toLowerCase();
+    const uid = (u.id || u.uid || '').toLowerCase();
+    return email.includes(s) || name.includes(s) || uid.includes(s);
+  });
 
-  // ── Render ─────────────────────────────────────────────────────
+  // ── Pagination calculations ─────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginated = filtered.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Handle page size change
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
   return (
     <>
       <style>{`
-        .mu-wrap { font-family: 'Segoe UI', sans-serif; }
+        /* ── Global Font ── */
+        * {
+          font-family: 'Segoe UI', Segoe UI, sans-serif;
+        }
 
         /* ── Toolbar ── */
         .mu-toolbar {
@@ -157,7 +212,6 @@ export default function ManageUsers() {
           border: 1px solid #ddd;
           border-radius: 6px;
           font-size: 13px;
-          font-family: inherit;
           outline: none;
           background: #fff;
           transition: border-color .2s;
@@ -171,7 +225,6 @@ export default function ManageUsers() {
           padding: 9px 18px;
           border-radius: 6px;
           font-size: 13px;
-          font-family: inherit;
           cursor: pointer;
           white-space: nowrap;
           transition: background .2s;
@@ -223,25 +276,11 @@ export default function ManageUsers() {
         .mu-table tr:last-child td { border-bottom: none; }
         .mu-table tbody tr:hover { background: #fdf5f5; }
 
-        /* ✅ Scrollable table body (ADDED) */
-        .mu-table-wrapper {
-          display: flex;
-          flex-direction: column;
-        }
-        .mu-table-body {
-          max-height: 520px;      /* change this height if you want */
-          overflow-y: auto;
-        }
-        .mu-table thead {
-          display: table;
-          width: 100%;
-          table-layout: fixed;
-        }
-        .mu-table-body table {
-          display: table;
-          width: 100%;
-          table-layout: fixed;
-        }
+        /* Scrollable table body */
+        .mu-table-wrapper { display: flex; flex-direction: column; }
+        .mu-table-body { max-height: 520px; overflow-y: auto; }
+        .mu-table thead { display: table; width: 100%; table-layout: fixed; }
+        .mu-table-body table { display: table; width: 100%; table-layout: fixed; }
 
         .mu-email { display: flex; align-items: center; gap: 8px; }
         .mu-email-icon {
@@ -253,19 +292,19 @@ export default function ManageUsers() {
           color: #7a1010;
           flex-shrink: 0;
         }
-        .mu-uid { font-size: 11px; color: #bbb; font-family: monospace; }
+        .mu-uid { font-size: 11px; color: #bbb;  }
 
-        .mu-delete-btn {
+        .mu-archive-btn {
           background: transparent;
           border: none;
-          color: #ccc;
+          color: #888888;
           cursor: pointer;
           padding: 5px 8px;
           border-radius: 4px;
           font-size: 15px;
           transition: all .2s;
         }
-        .mu-delete-btn:hover { color: #7a1010; background: #fef2f2; }
+        .mu-archive-btn:hover { color: #7a1010; background: #fef2f2; }
 
         /* ── Empty / loading ── */
         .mu-empty {
@@ -339,7 +378,6 @@ export default function ManageUsers() {
           border: 1px solid #ddd;
           border-radius: 6px;
           font-size: 13px;
-          font-family: inherit;
           outline: none;
           margin-bottom: 14px;
           box-sizing: border-box;
@@ -363,7 +401,6 @@ export default function ManageUsers() {
           padding: 9px 18px;
           border-radius: 6px;
           font-size: 13px;
-          font-family: inherit;
           cursor: pointer;
           transition: all .2s;
         }
@@ -376,11 +413,10 @@ export default function ManageUsers() {
           padding: 9px 18px;
           border-radius: 6px;
           font-size: 13px;
-          font-family: inherit;
           cursor: pointer;
           transition: background .2s;
         }
-        .mu-btn-danger:hover { background: #7a1010; }
+        .mu-btn-danger:hover { background: #5e0c0c; }
         .mu-btn-danger:disabled { opacity: .6; cursor: not-allowed; }
 
         /* ── Toast ── */
@@ -390,7 +426,6 @@ export default function ManageUsers() {
           padding: 12px 20px;
           border-radius: 8px;
           font-size: 13px;
-          font-family: inherit;
           z-index: 2000;
           box-shadow: 0 8px 24px rgba(0,0,0,.15);
           animation: mu-slideUp .3s ease;
@@ -398,16 +433,122 @@ export default function ManageUsers() {
         .mu-toast.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
         .mu-toast.error   { background: #fef2f2; border: 1px solid #fecaca; color: #7a1010; }
 
-        /* ── Badge ── */
+        /* ── Badges ── */
         .mu-badge {
           display: inline-block;
           padding: 2px 8px;
           border-radius: 99px;
           font-size: 11px;
-          font-weight: 500;
-          background: #fdf5f5;
+          font-weight: 600;
+          border: 1px solid transparent;
+        }
+        .mu-badge-red {
+          background: #fef2f2;
           color: #7a1010;
-          border: 1px solid #f5d0d0;
+          border-color: #fecaca;
+        }
+        .mu-badge-green {
+          background: #f0fdf4;
+          color: #166534;
+          border-color: #bbf7d0;
+        }
+        .mu-badge-gray {
+          background: #f6f7fb;
+          color: #666;
+          border-color: #e5e7eb;
+        }
+        
+        /* ── Pagination Controls ── */
+        .mu-pagination-controls {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px;
+          border-top: 1px solid #f0f0f0;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        
+        .mu-pagination-info {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          color: #666;
+          font-size: 13px;
+        }
+        
+        .mu-page-size-selector {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .mu-page-size-selector select {
+          padding: 6px 8px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 13px;
+          outline: none;
+          background: #fff;
+          cursor: pointer;
+        }
+        
+        .mu-page-size-selector select:focus {
+          border-color: #7a1010;
+        }
+        
+        .mu-pagination-buttons {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        
+        .mu-page-btn {
+          min-width: 36px;
+          height: 36px;
+          padding: 0 8px;
+          border: 1px solid #e5e5e5;
+          background: #fff;
+          border-radius: 6px;
+          font-size: 13px;
+          cursor: pointer;
+          color: #555;
+          transition: all .15s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .mu-page-btn:hover:not(:disabled) {
+          border-color: #7a1010;
+          color: #7a1010;
+          background: #fff5f5;
+        }
+        
+        .mu-page-btn.active {
+          background: #7a1010;
+          color: #fff;
+          border-color: #7a1010;
+          font-weight: 600;
+        }
+        
+        .mu-page-btn:disabled {
+          opacity: .4;
+          cursor: not-allowed;
+        }
+        
+        .mu-page-ellipsis {
+          padding: 0 4px;
+          color: #999;
+        }
+        
+        /* ── Results summary ── */
+        .mu-results-summary {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 13px;
+          color: #666;
         }
       `}</style>
 
@@ -415,7 +556,9 @@ export default function ManageUsers() {
         {/* Toolbar */}
         <div className="mu-toolbar">
           <div className="mu-search-wrap">
-            <span className="mu-search-icon">🔍</span>
+            <span className="mu-search-icon">
+              <Ionicons name="search-outline" size={16} />
+            </span>
             <input
               className="mu-search"
               placeholder="Search by name, email, or UID…"
@@ -423,9 +566,11 @@ export default function ManageUsers() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
           <button className="mu-btn-primary" onClick={() => setShowAddModal(true)}>
             + Add User
           </button>
+
           <button
             className="mu-btn-icon"
             title="Reload"
@@ -440,14 +585,14 @@ export default function ManageUsers() {
 
         {/* Table Card */}
         <div className="mu-card">
-          {/* ✅ Scroll wrapper (ADDED) */}
           <div className="mu-table-wrapper">
             {/* Header table */}
             <table className="mu-table">
               <thead>
                 <tr>
                   <th>Identifier</th>
-                  <th>Display Name</th>
+                  <th>Last Active</th>
+                  <th>Email Verified</th>
                   <th>Created</th>
                   <th>User UID</th>
                   <th></th>
@@ -461,7 +606,7 @@ export default function ManageUsers() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={5}>
+                      <td colSpan={6}>
                         <div className="mu-empty">
                           <div className="mu-spinner" />
                           Loading users…
@@ -470,46 +615,137 @@ export default function ManageUsers() {
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={5}>
-                        <div className="mu-empty">
-                          {search ? `No users matching "${search}"` : 'No users found'}
-                        </div>
+                      <td colSpan={6}>
+                        <div className="mu-empty">{search ? `No users matching "${search}"` : 'No users found'}</div>
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((u) => (
-                      <tr key={u.id}>
-                        <td>
-                          <div className="mu-email">
-                            <div className="mu-email-icon">✉</div>
-                            <span>{u.email || '—'}</span>
-                          </div>
-                        </td>
-                        <td>{u.displayName || '—'}</td>
-                        <td>{formatDate(u.createdAt)}</td>
-                        <td className="mu-uid">{shortUID(u.uid || u.id)}</td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button
-                            className="mu-delete-btn"
-                            onClick={() => setDeleteTarget(u)}
-                            title="Delete account"
-                          >
-                            🗑
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    paginated.map((u) => {
+                      const lastActiveText = formatDateTime(u.updatedAt);
+                      const isVerified = u.emailVerified === true;
+
+                      return (
+                        <tr key={u.id}>
+                          <td>
+                            <div className="mu-email">
+                              <div className="mu-email-icon">✉</div>
+                              <span>{u.email || '—'}</span>
+                            </div>
+                          </td>
+
+                          <td>{lastActiveText}</td>
+
+                          <td>
+                            {u.emailVerified === undefined ? (
+                              <span className="mu-badge mu-badge-gray">Unknown</span>
+                            ) : isVerified ? (
+                              <span className="mu-badge mu-badge-green">Verified</span>
+                            ) : (
+                              <span className="mu-badge mu-badge-red">Not Verified</span>
+                            )}
+                          </td>
+
+                          <td>{formatDate(u.createdAt)}</td>
+
+                          <td className="mu-uid">{shortUID(u.id)}</td>
+
+                          <td style={{ textAlign: 'right' }}>
+                            <button className="mu-archive-btn" onClick={() => setArchiveTarget(u)} title="Archive user">
+                              <Ionicons name="archive-outline" size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
 
-            {/* Footer (same as original) */}
-            {!loading && (
-              <div className="mu-footer">
-                <span className="mu-badge">
-                  {filtered.length} user{filtered.length !== 1 ? 's' : ''}
-                </span>
+            {/* Pagination Controls */}
+            {!loading && filtered.length > 0 && (
+              <div className="mu-pagination-controls">
+                <div className="mu-pagination-info">
+                  <span className="mu-badge mu-badge-red">
+                    {filtered.length} user{filtered.length !== 1 ? 's' : ''}
+                  </span>
+
+                  <div className="mu-page-size-selector">
+                    <span>Show:</span>
+                    <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))}>
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+
+                  <span>
+                    Showing {startIndex + 1}-{Math.min(endIndex, filtered.length)} of {filtered.length}
+                  </span>
+                </div>
+
+                <div className="mu-pagination-buttons">
+                  <button
+                    className="mu-page-btn"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={safePage === 1}
+                    title="First page"
+                  >
+                    «
+                  </button>
+
+                  <button
+                    className="mu-page-btn"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage === 1}
+                    title="Previous page"
+                  >
+                    ‹
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                    .reduce((acc, p, idx, arr) => {
+                      if (idx > 0 && p - arr[idx - 1] > 1) acc.push('…');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === '…' ? (
+                        <span key={`ellipsis-${idx}`} className="mu-page-ellipsis">
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          className={`mu-page-btn${safePage === p ? ' active' : ''}`}
+                          onClick={() => setCurrentPage(p)}
+                        >
+                          {p}
+                        </button>
+                      ),
+                    )}
+
+                  <button
+                    className="mu-page-btn"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage === totalPages}
+                    title="Next page"
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    className="mu-page-btn"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={safePage === totalPages}
+                    title="Last page"
+                  >
+                    »
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -521,13 +757,15 @@ export default function ManageUsers() {
         <div className="mu-overlay" onClick={(e) => e.target === e.currentTarget && setShowAddModal(false)}>
           <div className="mu-modal">
             <div className="mu-modal-title">Add New User</div>
-            <label className="mu-label">Display Name</label>
+
+            <label className="mu-label">Full Name</label>
             <input
               className="mu-input"
               placeholder="Juan dela Cruz"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
+
             <label className="mu-label">Email Address</label>
             <input
               className="mu-input"
@@ -535,8 +773,18 @@ export default function ManageUsers() {
               placeholder="user@example.com"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
+            />
+
+            <label className="mu-label">Temporary Password</label>
+            <input
+              className="mu-input"
+              type="password"
+              placeholder="Enter a password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddUser()}
             />
+
             <div className="mu-modal-actions">
               <button className="mu-btn-cancel" onClick={() => setShowAddModal(false)}>
                 Cancel
@@ -544,7 +792,7 @@ export default function ManageUsers() {
               <button
                 className="mu-btn-primary"
                 onClick={handleAddUser}
-                disabled={adding || !newName.trim() || !newEmail.trim()}
+                disabled={adding || !newName.trim() || !newEmail.trim() || !newPassword.trim()}
               >
                 {adding ? 'Adding…' : 'Add User'}
               </button>
@@ -553,23 +801,24 @@ export default function ManageUsers() {
         </div>
       )}
 
-      {/* ── Delete Confirm Modal ── */}
-      {deleteTarget && (
-        <div className="mu-overlay" onClick={(e) => e.target === e.currentTarget && setDeleteTarget(null)}>
+      {/* ── Archive Confirm Modal ── */}
+      {archiveTarget && (
+        <div className="mu-overlay" onClick={(e) => e.target === e.currentTarget && setArchiveTarget(null)}>
           <div className="mu-modal">
-            <div className="mu-modal-title danger">Delete Account</div>
+            <div className="mu-modal-title danger">Archive User</div>
             <p className="mu-modal-desc">
-              Are you sure you want to permanently delete the account for{' '}
-              <strong>{deleteTarget.email || deleteTarget.displayName}</strong>?
+              Archive account for <strong>{archiveTarget.email || archiveTarget.fullName || archiveTarget.id}</strong>?
               <br />
-              <span style={{ color: '#aaa', fontSize: '12px' }}>This action cannot be undone.</span>
+              <span style={{ color: '#aaa', fontSize: '12px' }}>
+                This will hide the user from the list (not deleted).
+              </span>
             </p>
             <div className="mu-modal-actions">
-              <button className="mu-btn-cancel" onClick={() => setDeleteTarget(null)}>
+              <button className="mu-btn-cancel" onClick={() => setArchiveTarget(null)}>
                 Cancel
               </button>
-              <button className="mu-btn-danger" onClick={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting…' : 'Delete Account'}
+              <button className="mu-btn-danger" onClick={handleArchive} disabled={archiving}>
+                {archiving ? 'Archiving…' : 'Archive'}
               </button>
             </div>
           </div>

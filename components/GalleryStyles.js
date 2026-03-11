@@ -36,7 +36,8 @@ export const Scroller = styled.ScrollView`
 `;
 
 export const Section = styled.View`
-  padding: 20px 20px 0 20px;
+  padding: 0px 20px 0 20px;
+  flex: 1;
 `;
 
 export const SectionLabel = styled.Text`
@@ -51,19 +52,22 @@ export const SectionLabel = styled.Text`
 export const CardsRow = styled.View`
   flex-direction: row;
   gap: 12px;
-  flex-wrap: wrap;
+  flex: 1;
 `;
 
 /* ─── Gallery Card ─── */
 
 export const Card = styled.View`
   flex: 1;
-  min-width: 260px;
   background-color: ${C.surface};
   border-radius: 10px;
   border-width: 1px;
   border-color: ${C.border};
   overflow: hidden;
+`;
+
+export const CardContent = styled.View`
+  flex: 1;
 `;
 
 export const CardTopStripe = styled.View`
@@ -73,6 +77,7 @@ export const CardTopStripe = styled.View`
 
 export const CardBody = styled.View`
   padding: 16px;
+  flex: 1;
 `;
 
 export const CardHeaderRow = styled.View`
@@ -124,6 +129,7 @@ export const StyledInput = styled.TextInput`
 `;
 
 export const DescInput = styled(StyledInput)`
+  flex: 1;
   min-height: 72px;
   text-align-vertical: top;
 `;

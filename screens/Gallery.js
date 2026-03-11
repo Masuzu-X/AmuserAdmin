@@ -34,12 +34,10 @@ import {
   IconContainer,
   LoadingContainer,
   LoadingText,
-  InfoStrip,
-  InfoStripText,
-  BoldText,
   ErrorContainer,
   ErrorText,
   Spacer,
+  CardContent,
 } from '../components/GalleryStyles';
 
 /* ─── Individual Gallery Card ─── */
@@ -111,58 +109,60 @@ function GalleryCard({ docId, label }) {
     <Card>
       <CardTopStripe />
       <CardBody>
-        <CardHeaderRow>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <IconContainer>
-              <Ionicons name="images-outline" size={15} color={C.brand} />
-            </IconContainer>
-            <CardTitleLabel>{label}</CardTitleLabel>
-          </View>
+        <CardContent>
+          <CardHeaderRow>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <IconContainer>
+                <Ionicons name="images-outline" size={15} color={C.brand} />
+              </IconContainer>
+              <CardTitleLabel>{label}</CardTitleLabel>
+            </View>
 
-          <StatusBadge $saved={saved && !isDirty}>
-            <Ionicons
-              name={saved && !isDirty ? 'checkmark-circle' : isDirty ? 'ellipse' : 'cloud-done'}
-              size={10}
-              color={saved && !isDirty ? C.green : isDirty ? C.brand : C.green}
-            />
-            <StatusText $saved={saved && !isDirty}>
-              {saved && !isDirty ? 'Saved' : isDirty ? 'Unsaved' : 'Synced'}
-            </StatusText>
-          </StatusBadge>
-        </CardHeaderRow>
+            <StatusBadge $saved={saved && !isDirty}>
+              <Ionicons
+                name={saved && !isDirty ? 'checkmark-circle' : isDirty ? 'ellipse' : 'cloud-done'}
+                size={10}
+                color={saved && !isDirty ? C.green : isDirty ? C.brand : C.green}
+              />
+              <StatusText $saved={saved && !isDirty}>
+                {saved && !isDirty ? 'Saved' : isDirty ? 'Unsaved' : 'Synced'}
+              </StatusText>
+            </StatusBadge>
+          </CardHeaderRow>
 
-        {loading ? (
-          <LoadingContainer>
-            <ActivityIndicator size="small" color={C.brand} />
-            <LoadingText>Loading…</LoadingText>
-          </LoadingContainer>
-        ) : (
-          <>
-            <FieldLabel>Title</FieldLabel>
-            <StyledInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Enter gallery title…"
-              placeholderTextColor={C.textTertiary}
-              $focused={titleFocused}
-              onFocus={() => setTitleFocused(true)}
-              onBlur={() => setTitleFocused(false)}
-            />
+          {loading ? (
+            <LoadingContainer>
+              <ActivityIndicator size="small" color={C.brand} />
+              <LoadingText>Loading…</LoadingText>
+            </LoadingContainer>
+          ) : (
+            <>
+              <FieldLabel>Title</FieldLabel>
+              <StyledInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Enter gallery title…"
+                placeholderTextColor={C.textTertiary}
+                $focused={titleFocused}
+                onFocus={() => setTitleFocused(true)}
+                onBlur={() => setTitleFocused(false)}
+              />
 
-            <FieldLabel>Description</FieldLabel>
-            <DescInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Enter gallery description…"
-              placeholderTextColor={C.textTertiary}
-              multiline
-              numberOfLines={3}
-              $focused={descFocused}
-              onFocus={() => setDescFocused(true)}
-              onBlur={() => setDescFocused(false)}
-            />
-          </>
-        )}
+              <FieldLabel>Description</FieldLabel>
+              <DescInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Enter gallery description…"
+                placeholderTextColor={C.textTertiary}
+                multiline
+                numberOfLines={3}
+                $focused={descFocused}
+                onFocus={() => setDescFocused(true)}
+                onBlur={() => setDescFocused(false)}
+              />
+            </>
+          )}
+        </CardContent>
       </CardBody>
 
       <FirestoreStrip>
@@ -195,6 +195,7 @@ function GalleryCard({ docId, label }) {
     </Card>
   );
 }
+
 /* ─── Main Component ─── */
 export default function EditLibraryContents() {
   const galleries = [
@@ -205,17 +206,14 @@ export default function EditLibraryContents() {
 
   return (
     <Shell>
-      <TopBarTitle style = {{paddingLeft: 10}}>Edit Gallery Contents</TopBarTitle>
-      <Scroller showsVerticalScrollIndicator={false}>
+      <Scroller showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
         <Section>
-          <SectionLabel style={{ marginTop: 16 }}>Gallery Collection</SectionLabel>
-
+          <SectionLabel>Gallery Collection</SectionLabel>
           <CardsRow>
             {galleries.map((g) => (
               <GalleryCard key={g.docId} docId={g.docId} label={g.label} />
             ))}
           </CardsRow>
-
           <Spacer />
         </Section>
       </Scroller>

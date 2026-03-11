@@ -1,70 +1,73 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { View, Alert } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 // firebase
-import {
-  updateProfile,
-  updateEmail,
-  updatePassword,
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
-import { auth } from "../firebase/firebaseConfig";
+import { updateProfile, updateEmail, updatePassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../firebase/firebaseConfig';
 
 // styles
 import {
-  AdminShell,
-  AdminSidebar,
-  SidebarContent,
-  SidebarBottomArea,
-  AdminBrandButton,
-  AdminBrandLogo,
-  AdminBrandText,
-  SidebarSectionTitle,
-  SidebarItem,
-  SidebarItemText,
-  AdminMain,
-  AdminContent,
-  Colors,
-  ProfilePage,
-  PageHeader,
-  PageHeading,
-  HeaderActions,
-  SoftButton,
-  SoftButtonText,
-  AccentButton,
-  AccentButtonText,
-  GridRow,
-  GridCol,
-  SpacerH,
-  SpacerV,
-  SectionCard,
-  SectionTitle,
-  RowBetween,
-  Label,
-  Value,
-  InlineInput,
-  IconPill,
-  AvatarWrap,
-  SmallHint,
-} from "../components/styles";
+  ProfileTokens as PT,
+  ProfileShell,
+  ProfileSidebar,
+  ProfileSidebarTop,
+  ProfileSidebarBottom,
+  NavBrand,
+  NavBrandLogo,
+  NavBrandLabel,
+  NavSection,
+  NavItem,
+  NavItemText,
+  NavActiveDot,
+  ProfileMain,
+  ProfilePageWrap,
+  ProfileTopBar,
+  ProfileTopBarTitle,
+  ProfileTopBarActions,
+  GhostBtn,
+  GhostBtnText,
+  SolidBtn,
+  SolidBtnText,
+  ProfileContentScroll,
+  ProfileTwoCol,
+  ProfileColLeft,
+  ProfileColRight,
+  IdentityCard,
+  AvatarRing,
+  AvatarInitials,
+  IdentityName,
+  IdentityEmail,
+  IdentityDivider,
+  MetaRow,
+  MetaLabel,
+  MetaValue,
+  ProfileCard,
+  ProfileCardHeader,
+  ProfileCardTitle,
+  ProfileCardSubtitle,
+  FieldRow,
+  FieldLabel,
+  FieldValue,
+  FieldInput,
+  EditLink,
+  EditLinkText,
+  SecurityHint,
+} from '../components/styles';
 
-const { primary, tertiary, darkLight } = Colors;
+// ─── UserProfileContent ───────────────────────────────────────────────────────
 
-export default function UserProfile() {
-  const navigation = useNavigation();
-
+export function UserProfileContent() {
   const [user, setUser] = useState(auth.currentUser);
 
   const [editName, setEditName] = useState(false);
   const [editEmail, setEditEmail] = useState(false);
   const [editPass, setEditPass] = useState(false);
 
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
@@ -72,230 +75,253 @@ export default function UserProfile() {
   }, []);
 
   useEffect(() => {
-    setDisplayName(user?.displayName || "");
-    setEmail(user?.email || "");
+    setDisplayName(user?.displayName || '');
+    setEmail(user?.email || '');
   }, [user]);
 
-  const isEditing = useMemo(() => editName || editEmail || editPass, [
-    editName,
-    editEmail,
-    editPass,
-  ]);
+  const isEditing = useMemo(() => editName || editEmail || editPass, [editName, editEmail, editPass]);
 
-  const handleLogout = async () => {
-    await signOut(auth);
-  };
+  const initials = useMemo(() => {
+    const name = user?.displayName?.trim();
+    if (!name) return 'AD';
+    return name
+      .split(' ')
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase())
+      .join('');
+  }, [user?.displayName]);
+
+  const userSince = useMemo(() => {
+    if (!user?.metadata?.creationTime) return '—';
+    return new Date(user.metadata.creationTime).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, [user?.metadata?.creationTime]);
+
+  const lastSignIn = useMemo(() => {
+    if (!user?.metadata?.lastSignInTime) return '—';
+    return new Date(user.metadata.lastSignInTime).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, [user?.metadata?.lastSignInTime]);
 
   const cancelEdits = () => {
     setEditName(false);
     setEditEmail(false);
     setEditPass(false);
-
-    setDisplayName(user?.displayName || "");
-    setEmail(user?.email || "");
-    setNewPassword("");
+    setDisplayName(user?.displayName || '');
+    setEmail(user?.email || '');
+    setNewPassword('');
   };
 
   const saveChanges = async () => {
     if (!user) return;
-
     try {
-      // Name
-      if (editName) {
-        await updateProfile(user, {
-          displayName: displayName || "",
-        });
-      }
-
-      // Email (often requires recent login)
-      if (editEmail && email && email !== user.email) {
-        await updateEmail(user, email);
-      }
-
-      // Password (requires recent login)
-      if (editPass && newPassword) {
-        await updatePassword(user, newPassword);
-      }
-
-      Alert.alert("Saved", "Your profile has been updated.");
+      if (editName) await updateProfile(user, { displayName: displayName || '' });
+      if (editEmail && email && email !== user.email) await updateEmail(user, email);
+      if (editPass && newPassword) await updatePassword(user, newPassword);
+      Alert.alert('Saved', 'Your profile has been updated.');
       cancelEdits();
     } catch (err) {
-      Alert.alert("Update failed", err?.message || "Please try again.");
+      Alert.alert('Update failed', err?.message || 'Please try again.');
     }
   };
 
   return (
-    <AdminShell>
-      {/* SIDEBAR */}
-      <AdminSidebar>
-        <SidebarContent>
-          <AdminBrandButton onPress={() => navigation.navigate("Home")}>
-            <AdminBrandLogo source={require("../assets/image copy.png")} />
-            <AdminBrandText>AmuseR</AdminBrandText>
-          </AdminBrandButton>
+    <ProfilePageWrap>
+      <ProfileTopBar>
+        <ProfileTopBarTitle>Profile Settings</ProfileTopBarTitle>
+        {isEditing && (
+          <ProfileTopBarActions>
+            <GhostBtn onPress={cancelEdits}>
+              <GhostBtnText>Discard</GhostBtnText>
+            </GhostBtn>
+            <SolidBtn onPress={saveChanges}>
+              <SolidBtnText>Save changes</SolidBtnText>
+            </SolidBtn>
+          </ProfileTopBarActions>
+        )}
+      </ProfileTopBar>
 
-          <SidebarSectionTitle>ADMIN</SidebarSectionTitle>
+      <ProfileContentScroll>
+        <ProfileTwoCol>
+          {/* Left — identity */}
+          <ProfileColLeft>
+            <IdentityCard>
+              <AvatarRing>
+                <AvatarInitials>{initials}</AvatarInitials>
+              </AvatarRing>
+              <IdentityName>{user?.displayName || 'Admin User'}</IdentityName>
+              <IdentityEmail>{user?.email || '—'}</IdentityEmail>
 
-          <SidebarItem $active={false} onPress={() => navigation.navigate("Home")}>
-            <Ionicons name="speedometer-outline" size={18} color={primary} />
-            <SidebarItemText>Dashboard</SidebarItemText>
-          </SidebarItem>
+              <IdentityDivider />
 
-          <SidebarItem $active={true} onPress={() => {}}>
-            <Ionicons name="person-circle-outline" size={18} color={primary} />
-            <SidebarItemText>Profile</SidebarItemText>
-          </SidebarItem>
-        </SidebarContent>
+              <MetaRow>
+                <MetaLabel>Member since</MetaLabel>
+                <MetaValue>{userSince}</MetaValue>
+              </MetaRow>
+              <View style={{ height: 8 }} />
+              <MetaRow>
+                <MetaLabel>Last login</MetaLabel>
+                <MetaValue numberOfLines={1}>{lastSignIn}</MetaValue>
+              </MetaRow>
+            </IdentityCard>
+          </ProfileColLeft>
 
-        {/* Bottom logout */}
-        <SidebarBottomArea>
-          <SidebarItem $active={false} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={18} color={primary} />
-            <SidebarItemText>Logout</SidebarItemText>
-          </SidebarItem>
-        </SidebarBottomArea>
-      </AdminSidebar>
+          {/* Right — forms */}
+          <ProfileColRight>
+            {/* Personal information */}
+            <ProfileCard>
+              <ProfileCardHeader>
+                <View>
+                  <ProfileCardTitle>Personal information</ProfileCardTitle>
+                  <ProfileCardSubtitle>Update your name and email address.</ProfileCardSubtitle>
+                </View>
+              </ProfileCardHeader>
 
-      {/* MAIN */}
-      <AdminMain style={{ backgroundColor: primary }}>
-        <ProfilePage style={{ backgroundColor: primary }}>
-          <PageHeader>
-            <GridRow style={{ alignItems: "center", justifyContent: "space-between" }}>
-              <View>
-                <PageHeading>Personal area</PageHeading>
-              </View>
+              <FieldRow>
+                <FieldLabel>Display name</FieldLabel>
+                {editName ? (
+                  <FieldInput value={displayName} onChangeText={setDisplayName} placeholder="Your name" autoFocus />
+                ) : (
+                  <FieldValue>{user?.displayName || '—'}</FieldValue>
+                )}
+                {!editName && (
+                  <EditLink
+                    onPress={() => {
+                      setEditName(true);
+                      setEditEmail(false);
+                      setEditPass(false);
+                    }}
+                  >
+                    <EditLinkText>Edit</EditLinkText>
+                  </EditLink>
+                )}
+              </FieldRow>
 
-              {/* Save ONLY when editing */}
-              <HeaderActions>
-                {isEditing ? (
-                  <>
-                    <SoftButton onPress={cancelEdits}>
-                      <SoftButtonText>Cancel</SoftButtonText>
-                    </SoftButton>
+              <FieldRow style={{ borderBottomWidth: 0 }}>
+                <FieldLabel>Email</FieldLabel>
+                {editEmail ? (
+                  <FieldInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="your@email.com"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoFocus
+                  />
+                ) : (
+                  <FieldValue>{user?.email || '—'}</FieldValue>
+                )}
+                {!editEmail && (
+                  <EditLink
+                    onPress={() => {
+                      setEditEmail(true);
+                      setEditName(false);
+                      setEditPass(false);
+                    }}
+                  >
+                    <EditLinkText>Edit</EditLinkText>
+                  </EditLink>
+                )}
+              </FieldRow>
+            </ProfileCard>
 
-                    <AccentButton onPress={saveChanges}>
-                      <AccentButtonText>Save</AccentButtonText>
-                    </AccentButton>
-                  </>
-                ) : null}
-              </HeaderActions>
-            </GridRow>
-          </PageHeader>
+            {/* Security */}
+            <ProfileCard>
+              <ProfileCardHeader>
+                <View>
+                  <ProfileCardTitle>Security</ProfileCardTitle>
+                  <ProfileCardSubtitle>Manage your password and sign-in method.</ProfileCardSubtitle>
+                </View>
+              </ProfileCardHeader>
 
-          <AdminContent>
-            <GridRow>
-              {/* Profile card */}
-              <GridCol>
-                <SectionCard>
-                  <SectionTitle>Profile</SectionTitle>
+              <FieldRow style={{ borderBottomWidth: 0 }}>
+                <FieldLabel>Password</FieldLabel>
+                {editPass ? (
+                  <FieldInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="New password"
+                    secureTextEntry
+                    autoFocus
+                  />
+                ) : (
+                  <FieldValue style={{ letterSpacing: 2, fontSize: 10 }}>{'● ● ● ● ● ● ● ●'}</FieldValue>
+                )}
+                {!editPass && (
+                  <EditLink
+                    onPress={() => {
+                      setEditPass(true);
+                      setEditName(false);
+                      setEditEmail(false);
+                    }}
+                  >
+                    <EditLinkText>Change</EditLinkText>
+                  </EditLink>
+                )}
+              </FieldRow>
 
-                  <GridRow style={{ alignItems: "center" }}>
-                    <AvatarWrap>
-                      <Ionicons name="person" size={34} color={darkLight} />
-                    </AvatarWrap>
+              {!editPass && (
+                <SecurityHint>
+                  Use a strong, unique password. We recommend at least 12 characters with a mix of letters and numbers.
+                </SecurityHint>
+              )}
+            </ProfileCard>
+          </ProfileColRight>
+        </ProfileTwoCol>
+      </ProfileContentScroll>
+    </ProfilePageWrap>
+  );
+}
 
-                    <SpacerH />
+// ─── UserProfile (shell + sidebar) ───────────────────────────────────────────
 
-                    <GridCol>
-                      {/* Name */}
-                      <RowBetween>
-                        <Label>Name</Label>
-                        <View style={{ flexDirection: "row", alignItems: "center" }}>
-                          {!editName ? (
-                            <Value>{displayName || "-"}</Value>
-                          ) : (
-                            <InlineInput
-                              value={displayName}
-                              onChangeText={setDisplayName}
-                              placeholder="Enter display name"
-                              placeholderTextColor={darkLight}
-                            />
-                          )}
+export default function UserProfile() {
+  const navigation = useNavigation();
 
-                          <IconPill onPress={() => setEditName((v) => !v)}>
-                            <Ionicons
-                              name={editName ? "close" : "pencil"}
-                              size={16}
-                              color={tertiary}
-                            />
-                          </IconPill>
-                        </View>
-                      </RowBetween>
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
 
-                      <SpacerV />
-                    </GridCol>
-                  </GridRow>
-                </SectionCard>
-              </GridCol>
+  return (
+    <ProfileShell>
+      <ProfileSidebar>
+        <ProfileSidebarTop>
+          <NavBrand onPress={() => navigation.navigate('Home')}>
+            <NavBrandLogo source={require('../assets/image copy.png')} />
+            <NavBrandLabel>AmuseR</NavBrandLabel>
+          </NavBrand>
 
-              <SpacerH />
+          <NavSection>ADMIN</NavSection>
 
-              {/* Contact info card */}
-              <GridCol>
-                <SectionCard>
-                  <SectionTitle>Contact information</SectionTitle>
+          <NavItem $active={false} onPress={() => navigation.navigate('Home')}>
+            <Ionicons name="speedometer-outline" size={16} color={PT.inkMid} />
+            <NavItemText $active={false}>Dashboard</NavItemText>
+          </NavItem>
 
-                  {/* Email */}
-                  <RowBetween>
-                    <Label>E-mail</Label>
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      {!editEmail ? (
-                        <Value>{email || "-"}</Value>
-                      ) : (
-                        <InlineInput
-                          value={email}
-                          onChangeText={setEmail}
-                          placeholder="name@email.com"
-                          placeholderTextColor={darkLight}
-                          autoCapitalize="none"
-                          keyboardType="email-address"
-                        />
-                      )}
+          <NavItem $active={true} onPress={() => {}}>
+            <Ionicons name="person-outline" size={16} color={PT.ink} />
+            <NavItemText $active={true}>Profile</NavItemText>
+            <NavActiveDot />
+          </NavItem>
+        </ProfileSidebarTop>
 
-                      <IconPill onPress={() => setEditEmail((v) => !v)}>
-                        <Ionicons
-                          name={editEmail ? "close" : "pencil"}
-                          size={16}
-                          color={tertiary}
-                        />
-                      </IconPill>
-                    </View>
-                  </RowBetween>
+        <ProfileSidebarBottom>
+          <NavItem $active={false} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={16} color={PT.inkMid} />
+            <NavItemText $active={false}>Sign out</NavItemText>
+          </NavItem>
+        </ProfileSidebarBottom>
+      </ProfileSidebar>
 
-                  <SpacerV />
-
-                  {/* Password */}
-                  <RowBetween>
-                    <Label>Password</Label>
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      {!editPass ? (
-                        <Value>••••••••</Value>
-                      ) : (
-                        <InlineInput
-                          value={newPassword}
-                          onChangeText={setNewPassword}
-                          placeholder="New password"
-                          placeholderTextColor={darkLight}
-                          secureTextEntry
-                        />
-                      )}
-
-                      <IconPill onPress={() => setEditPass((v) => !v)}>
-                        <Ionicons
-                          name={editPass ? "close" : "pencil"}
-                          size={16}
-                          color={tertiary}
-                        />
-                      </IconPill>
-                    </View>
-                  </RowBetween>
-                </SectionCard>
-              </GridCol>
-            </GridRow>
-
-          </AdminContent>
-        </ProfilePage>
-      </AdminMain>
-    </AdminShell>
+      <ProfileMain>
+        <UserProfileContent />
+      </ProfileMain>
+    </ProfileShell>
   );
 }

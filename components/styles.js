@@ -1,17 +1,17 @@
-import styled from "styled-components/native";
-import { View, Image, Text, TextInput, TouchableOpacity, Dimensions } from "react-native";
-import Constants from "expo-constants";
+import styled from 'styled-components/native';
+import { View, Image, Text, TextInput, TouchableOpacity, Dimensions } from 'react-native';
+import Constants from 'expo-constants';
 
-const { width } = Dimensions.get("window");
+const { width } = Dimensions.get('window');
 const StatusBarHeight = Constants.statusBarHeight;
 
 // colors
 export const Colors = {
-  primary: "#ffffff",
-  secondary: "#E5E7EB",
-  tertiary: "#1a1a1a",
-  darkLight: "#87898b",
-  brand: "#6b130f",
+  primary: '#ffffff',
+  secondary: '#E5E7EB',
+  tertiary: '#1a1a1a',
+  darkLight: '#87898b',
+  brand: '#6b130f',
 };
 
 const { primary, secondary, tertiary, darkLight, brand } = Colors;
@@ -30,7 +30,7 @@ export const LeftPane = styled(View)`
   flex: 0.65;
   justify-content: center;
   align-items: center;
-  display: ${width < 768 ? "none" : "flex"};
+  display: ${width < 768 ? 'none' : 'flex'};
 `;
 
 export const HeroImage = styled(Image)`
@@ -180,7 +180,7 @@ export const BackRow = styled.View`
   align-items: center;
 `;
 
-/* ====== UI style forgot passowrd ====== */
+/* ====== UI style forgot password ====== */
 
 export const CenterContainer = styled.View`
   flex: 1;
@@ -196,10 +196,8 @@ export const CenterCard = styled.View`
   background-color: ${primary};
   border-radius: 26px;
   padding: 34px 28px;
-
   border-width: 2px;
   border-color: rgba(0, 0, 0, 0.06);
-
   elevation: 8;
 `;
 
@@ -233,7 +231,6 @@ export const ErrorRow = styled.View`
   align-items: center;
   justify-content: space-between;
 `;
-
 
 export const ErrorLeft = styled.View`
   flex: 1;
@@ -306,11 +303,8 @@ export const SidebarItem = styled.TouchableOpacity`
   padding: 12px 12px;
   border-radius: 12px;
   margin-bottom: 8px;
-
-  /* remove borders */
   border-width: 0px;
-
-  background-color: ${(props) => (props.$active ? "rgba(255,255,255,0.14)" : "transparent")};
+  background-color: ${(props) => (props.$active ? 'rgba(255,255,255,0.14)' : 'transparent')};
 `;
 
 export const SidebarItemText = styled.Text`
@@ -397,7 +391,7 @@ export const SpacerV = styled.View`
   height: 18px;
 `;
 
-/* ================= Profile ================= */
+/* ================= Profile (legacy) ================= */
 
 export const ProfilePage = styled.View`
   flex: 1;
@@ -511,7 +505,7 @@ export const AvatarWrap = styled.View`
   border-radius: 22px;
   background-color: rgba(0, 0, 0, 0.06);
   border-width: 1px;
-  border-color: rgba(0, 0, 0, 0.10);
+  border-color: rgba(0, 0, 0, 0.1);
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -527,4 +521,337 @@ export const SmallHint = styled.Text`
   margin-top: 8px;
   font-size: 12px;
   color: ${darkLight};
+`;
+
+/* ================= Profile Redesign — Design Tokens ================= */
+
+export const ProfileTokens = {
+  brand: '#6b130f',
+  brandSub: '#8f1a15',
+  ink: '#1c1917',
+  inkMid: '#57534e',
+  inkLight: '#a8a29e',
+  surface: '#ffffff',
+  ground: '#fafaf9',
+  line: '#e7e5e4',
+  lineAlt: '#f0efee',
+};
+
+const PT = ProfileTokens;
+
+/* ================= Profile Redesign — Shell & Sidebar ================= */
+
+export const ProfileShell = styled.View`
+  flex: 1;
+  flex-direction: row;
+  background-color: ${PT.surface};
+`;
+
+export const ProfileSidebar = styled.View`
+  width: 220px;
+  background-color: ${PT.surface};
+  border-right-width: 1px;
+  border-right-color: ${PT.line};
+  padding: 28px 16px;
+  justify-content: space-between;
+`;
+
+export const ProfileSidebarTop = styled.View`
+  flex: 1;
+`;
+
+export const ProfileSidebarBottom = styled.View`
+  padding-top: 12px;
+`;
+
+export const NavBrand = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 36px;
+  padding: 0 4px;
+`;
+
+export const NavBrandLogo = styled.Image`
+  width: 30px;
+  height: 30px;
+  resize-mode: contain;
+  margin-right: 10px;
+`;
+
+export const NavBrandLabel = styled.Text`
+  font-size: 16px;
+  font-weight: 700;
+  color: ${PT.brand};
+  letter-spacing: -0.3px;
+`;
+
+export const NavSection = styled.Text`
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: ${PT.inkLight};
+  margin-bottom: 6px;
+  margin-top: 4px;
+  padding: 0 10px;
+`;
+
+export const NavItem = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  background-color: ${(p) => (p.$active ? PT.lineAlt : 'transparent')};
+`;
+
+export const NavItemText = styled.Text`
+  font-size: 13.5px;
+  font-weight: ${(p) => (p.$active ? '700' : '500')};
+  color: ${(p) => (p.$active ? PT.ink : PT.inkMid)};
+  margin-left: 10px;
+`;
+
+export const NavActiveDot = styled.View`
+  width: 3px;
+  height: 3px;
+  border-radius: 2px;
+  background-color: ${PT.brand};
+  margin-left: auto;
+`;
+
+export const ProfileMain = styled.View`
+  flex: 1;
+  background-color: ${PT.ground};
+`;
+
+/* ================= Profile Redesign — Page & Topbar ================= */
+
+export const ProfilePageWrap = styled.View`
+  flex: 1;
+`;
+
+export const ProfileTopBar = styled.View`
+  height: 60px;
+  background-color: ${PT.surface};
+  border-bottom-width: 1px;
+  border-bottom-color: ${PT.line};
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+`;
+
+export const ProfileTopBarTitle = styled.Text`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${PT.ink};
+  letter-spacing: -0.1px;
+`;
+
+export const ProfileTopBarActions = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const GhostBtn = styled.TouchableOpacity`
+  padding: 7px 14px;
+  border-radius: 7px;
+  border-width: 1px;
+  border-color: ${PT.line};
+  background-color: ${PT.surface};
+`;
+
+export const GhostBtnText = styled.Text`
+  font-size: 12.5px;
+  font-weight: 600;
+  color: ${PT.inkMid};
+`;
+
+export const SolidBtn = styled.TouchableOpacity`
+  padding: 7px 16px;
+  border-radius: 7px;
+  background-color: ${PT.brand};
+`;
+
+export const SolidBtnText = styled.Text`
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+`;
+
+/* ================= Profile Redesign — Content Layout ================= */
+
+export const ProfileContentScroll = styled.ScrollView.attrs({
+  showsVerticalScrollIndicator: false,
+  contentContainerStyle: { padding: 28, paddingBottom: 60 },
+})``;
+
+export const ProfileTwoCol = styled.View`
+  flex-direction: row;
+  gap: 20px;
+`;
+
+export const ProfileColLeft = styled.View`
+  width: 260px;
+`;
+
+export const ProfileColRight = styled.View`
+  flex: 1;
+`;
+
+/* ================= Profile Redesign — Identity Card ================= */
+
+export const IdentityCard = styled.View`
+  background-color: ${PT.surface};
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${PT.line};
+  padding: 24px;
+  align-items: center;
+  margin-bottom: 16px;
+`;
+
+export const AvatarRing = styled.View`
+  width: 72px;
+  height: 72px;
+  border-radius: 36px;
+  background-color: ${PT.brand};
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+`;
+
+export const AvatarInitials = styled.Text`
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+`;
+
+export const IdentityName = styled.Text`
+  font-size: 16px;
+  font-weight: 700;
+  color: ${PT.ink};
+  text-align: center;
+  letter-spacing: -0.3px;
+`;
+
+export const IdentityEmail = styled.Text`
+  font-size: 12.5px;
+  color: ${PT.inkLight};
+  margin-top: 3px;
+  text-align: center;
+`;
+
+export const IdentityDivider = styled.View`
+  height: 1px;
+  background-color: ${PT.line};
+  width: 100%;
+  margin: 16px 0;
+`;
+
+export const MetaRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 2px;
+`;
+
+export const MetaLabel = styled.Text`
+  font-size: 11.5px;
+  color: ${PT.inkLight};
+  font-weight: 500;
+`;
+
+export const MetaValue = styled.Text`
+  font-size: 11.5px;
+  color: ${PT.inkMid};
+  font-weight: 600;
+  flex-shrink: 1;
+  text-align: right;
+  margin-left: 8px;
+`;
+
+/* ================= Profile Redesign — Form Cards ================= */
+
+export const ProfileCard = styled.View`
+  background-color: ${PT.surface};
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${PT.line};
+  padding: 24px;
+  margin-bottom: 16px;
+`;
+
+export const ProfileCardHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 20px;
+`;
+
+export const ProfileCardTitle = styled.Text`
+  font-size: 13.5px;
+  font-weight: 700;
+  color: ${PT.ink};
+  letter-spacing: 0.1px;
+`;
+
+export const ProfileCardSubtitle = styled.Text`
+  font-size: 12px;
+  color: ${PT.inkLight};
+  margin-top: 1px;
+`;
+
+export const FieldRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom-width: 1px;
+  border-bottom-color: ${PT.lineAlt};
+`;
+
+export const FieldLabel = styled.Text`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${PT.inkLight};
+  width: 110px;
+  letter-spacing: 0.1px;
+`;
+
+export const FieldValue = styled.Text`
+  font-size: 13.5px;
+  font-weight: 500;
+  color: ${PT.ink};
+  flex: 1;
+`;
+
+export const FieldInput = styled.TextInput`
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border-width: 1px;
+  border-color: ${PT.line};
+  background-color: ${PT.ground};
+  font-size: 13.5px;
+  color: ${PT.ink};
+`;
+
+export const EditLink = styled.TouchableOpacity`
+  padding: 4px 8px;
+  margin-left: 10px;
+`;
+
+export const EditLinkText = styled.Text`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${PT.brand};
+`;
+
+export const SecurityHint = styled.Text`
+  font-size: 12px;
+  color: ${PT.inkLight};
+  line-height: 17px;
+  margin-top: 6px;
 `;
